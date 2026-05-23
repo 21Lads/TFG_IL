@@ -27,9 +27,9 @@ class IntegratedHighwaySimulator:
         self.env.unwrapped.configure({
             "offscreen_rendering": True,
             "lanes_count": 3,
-            "vehicles_density": 1.7,
+            "vehicles_density": 1.8,
             "speed_limit": 33.3, # 120 km/h
-            "duration": 40, # 20 seconds at 0.5s per step
+            "duration": 60, # 20 seconds at 0.5s per step
             "policy_frequency": int(1 / self.dt),
             # for NPC cars
             "right_lane_reward": 0.8, # Encourages staying in the right lane when not overtaking
@@ -255,15 +255,15 @@ class IntegratedHighwaySimulator:
 
 if __name__ == "__main__":
 
-    with open("results/styles_artifacts.pkl", "rb") as f:
-        styles = pickle.load(f)
-        
-    # Extract the separate profiles
-    agg_mdp_data = styles["aggressive"]["mdp_data"]
-    agg_policy = styles["aggressive"]["policy"]
-    
-    cons_mdp_data = styles["conservative"]["mdp_data"]
-    cons_policy = styles["conservative"]["policy"]
+    #with open("results/styles_artifacts.pkl", "rb") as f:
+    #    styles = pickle.load(f)
+    #    
+    ## Extract the separate profiles
+    #agg_mdp_data = styles["aggressive"]["mdp_data"]
+    #agg_policy = styles["aggressive"]["policy"]
+    #
+    #cons_mdp_data = styles["conservative"]["mdp_data"]
+    #cons_policy = styles["conservative"]["policy"]
 
     #sim = IntegratedHighwaySimulator(mdp_data=cons_data, render=True)
 
@@ -278,165 +278,122 @@ if __name__ == "__main__":
         
     except FileNotFoundError:
         print(" Error: Missing files in 'results/' folder.")
+        #print file names that are expected
+        print(" Expected: 'irl_artifacts.pkl' and 'expert_trajectory.csv'")
         exit()
 
-    avg_speed = [0.0] * 50
-    lane_changes_all = [0] * 50
-    crashes = 0
-    episodes = 0
-    while episodes < 50:
-        speed = 0
-        lane_changes = 0
-        print("Initializing Unified Simulator...")
-        sim = IntegratedHighwaySimulator(mdp_data=mdp_data, render=False)
+    print("Initializing Unified Simulator...")
+    sim = IntegratedHighwaySimulator(mdp_data=mdp_data, render=True)
+    
+    state_idx = sim.reset()
+    done = truncated = False
+    
+    expert_start_x = expert_df.iloc[0]['x']
+    expert_start_y = expert_df.iloc[0]['y']
+    expert_start_v = expert_df.iloc[0]['computed_v']
+    
+    # M40: 500, 503, 506 (Ancho de 3m) -> Índices: 0, 1, 2 -> Highway-Env: 0, 4, 8 (Ancho de 4m)
+    def normalize_y(y_real):
+        lane_idx = round((y_real - 500.0) / 3.0)
+        lane_idx = max(0, min(2, lane_idx)) 
+        return lane_idx * 4.0
 
-        state_idx = sim.reset()
-        done = truncated = False
+    sim_start_y = normalize_y(expert_start_y)
+    
+    sim.env.unwrapped.vehicle.position = np.array([0.0, sim_start_y])
+    sim.env.unwrapped.vehicle.speed = expert_start_v
+    
+    ghost_car = Vehicle(
+        road=sim.env.unwrapped.road, 
+        position=[10.0, sim_start_y], 
+        speed=expert_start_v
+    )
+    ghost_car.color = (255, 0, 255) # Magenta
+    ghost_car.crashed = False 
+    #sim.env.unwrapped.road.vehicles.append(ghost_car)
+    
+    print("\n--- Starting Ghost Car Comparison (Shadow Mode) ---")
+    step_count = 0
+    paused = True
+    # IGNORE CRASHES with "while not truncated:"
+    while not truncated and not done:
 
-        # 1. EXTRAER EL INICIO DEL EXPERTO
-        expert_start_x = expert_df.iloc[0]['x']
-        expert_start_y = expert_df.iloc[0]['y']
-        expert_start_v = expert_df.iloc[0]['computed_v']
+        frame = sim.capture_frame()
 
-        # 2. FUNCIÓN DE CONVERSIÓN DE CARRILES
-        # M40: 500, 503, 506 (Ancho de 3m) -> Índices: 0, 1, 2 -> Highway-Env: 0, 4, 8 (Ancho de 4m)
-        def normalize_y(y_real):
-            # Usamos tu lógica adaptada: restamos 500, dividimos por 3 para sacar el carril, y escalamos a 4m
-            lane_idx = round((y_real - 500.0) / 3.0)
-            # Asegurarnos de que no se salga de los 3 carriles (0, 1, o 2)
-            lane_idx = max(0, min(2, lane_idx)) 
-            return lane_idx * 4.0
+    # Show frame
+        cv2.imshow("Simulator", frame)
 
-        sim_start_y = normalize_y(expert_start_y)
+        key = cv2.waitKey(0 if paused else 1) & 0xFF
 
-        # 3. FORZAR AL COCHE EGO (VERDE) A EMPEZAR EXACTAMENTE DONDE ESTABA EL HUMANO
-        # Ya no empieza aleatorio, empieza en el carril exacto y a la velocidad exacta
-        sim.env.unwrapped.vehicle.position = np.array([0.0, sim_start_y])
-        sim.env.unwrapped.vehicle.speed = expert_start_v
+        if key == ord('q'):
+            break
 
-        # 4. CREAR EL COCHE FANTASMA EN EL EXACTO MISMO PÍXEL
-        ghost_car = Vehicle(
-            road=sim.env.unwrapped.road, 
-            position=[0.0, sim_start_y], 
-            speed=expert_start_v
-        )
-        ghost_car.color = (255, 0, 255) # Magenta
-        ghost_car.crashed = False 
-        #sim.env.unwrapped.road.vehicles.append(ghost_car)
+        # SPACE = pause/unpause
+        if key == ord(' '):
+            action_probs = policy[state_idx]
+            paused = not paused
 
-        print("\n--- Starting Ghost Car Comparison (Shadow Mode) ---")
-        step_count = 0
-        paused = True
-        # IGNORE CRASHES with "while not truncated:"
-        while not truncated and not done:
+        # 'n' = step ONE frame forward 
+        if key == ord('n'):
+            action_probs = policy[state_idx]
 
-            #frame = sim.capture_frame()
+        if key == ord('p'):  # "p" for probe
+            action_probs = policy[state_idx]
 
-        # Show frame
-            #cv2.imshow("Simulator", frame)
+            frame_with_overlay = sim.overlay_action_probs(frame.copy(), action_probs)
 
-            #key = cv2.waitKey(0 if paused else 1) & 0xFF
+            cv2.imshow("Probe", frame_with_overlay)
+            cv2.waitKey(0)
 
-            #if key == ord('q'):
-            #    break
-#
-            # SPACE = pause/unpause
-            #if key == ord(' '):
-            #    action_probs = policy[state_idx]
-            #    paused = not paused
-#
-            ## 'n' = step ONE frame forward 
-            #if key == ord('n'):
-            #    action_probs = policy[state_idx]
-#
-            #if key == ord('p'):  # "p" for probe
-            #    action_probs = policy[state_idx]
-#
-            #    frame_with_overlay = sim.overlay_action_probs(frame.copy(), action_probs)
-#
-            #    cv2.imshow("Probe", frame_with_overlay)
-            #    cv2.waitKey(0)
+        # overlay BEFORE stepping (decision frame)
+        frame = sim.overlay_action_probs(frame, action_probs)
+        cv2.imshow("Simulator", frame)
+        cv2.waitKey(1)
 
-            # overlay BEFORE stepping (decision frame)
-            #frame = sim.overlay_action_probs(frame, action_probs)
-            #cv2.imshow("Simulator", frame)
-            #cv2.waitKey(1)
+        action_idx = np.random.choice(len(action_probs), p=action_probs)
+        next_state_idx, reward, done, truncated, info = sim.step(action_idx)
+        # Ask IRL Agent for Action
+        action_probs = policy[state_idx]
 
+        prob_sum = np.sum(action_probs)
+        #if prob_sum > 0:
+        #    action_probs = action_probs / prob_sum
+        #else:
+        #    # PROFESSIONAL FALLBACK: Maintain current trajectory rather than panicking arbitrarily
+        #    action_probs = np.zeros(len(action_probs))
+        #    idle_action_idx = sim.physical_actions.index((0.0, 0)) # Find the (0 delta_v, 0 delta_lane) action
+        #    action_probs[idle_action_idx] = 1.0
+
+        #action_idx = np.random.choice(len(action_probs), p=action_probs)
+        #print(f"Step {step_count}: State {state_idx} -> Action {action_idx}: {sim.physical_actions[action_idx]} (Action Probabilities: {action_probs})")
+        
+        if not paused:
             action_probs = policy[state_idx]
             action_idx = np.random.choice(len(action_probs), p=action_probs)
-            next_state_idx, reward, done, truncated, info = sim.step(action_idx)
-            # Ask IRL Agent for Action
+            state_idx, reward, done, truncated, info = sim.step(action_idx)
+
+        sim.env.unwrapped.vehicle.crashed = False
+        #ghost_car.crashed = False
+        
+        if step_count < len(expert_df):
+            historical_data = expert_df.iloc[step_count]
             
-
-            #prob_sum = np.sum(action_probs)
-            #if prob_sum > 0:
-            #    action_probs = action_probs / prob_sum
-            #else:
-            #    # PROFESSIONAL FALLBACK: Maintain current trajectory rather than panicking arbitrarily
-            #    action_probs = np.zeros(len(action_probs))
-            #    idle_action_idx = sim.physical_actions.index((0.0, 0)) # Find the (0 delta_v, 0 delta_lane) action
-            #    action_probs[idle_action_idx] = 1.0
-
-            #action_idx = np.random.choice(len(action_probs), p=action_probs)
-            #print(f"Step {step_count}: State {state_idx} -> Action {action_idx}: {sim.physical_actions[action_idx]} (Action Probabilities: {action_probs})")
-
-            #if not paused:
-            #    action_probs = policy[state_idx]
-            #    action_idx = np.random.choice(len(action_probs), p=action_probs)
-            #    state_idx, reward, done, truncated, info = sim.step(action_idx)
-
-            #sim.env.unwrapped.vehicle.crashed = False
-            #ghost_car.crashed = False
-
-            #if step_count < len(expert_df):
-            #    historical_data = expert_df.iloc[step_count]
-#
-            #    # Avanzar X relativo al punto de partida original
-            #    normalized_x = historical_data['x'] - expert_start_x
-            #    # Calcular Y con nuestra nueva función de carriles
-            #    normalized_y = normalize_y(historical_data['y'])
-#
-            #    ghost_car.position = np.array([normalized_x, normalized_y])
-            #    ghost_car.speed = historical_data['computed_v']
-
-            #sim.render()
-            #time.sleep(0.1) 
-
-            # check speed for average speed calculation
-            speed += sim.env.unwrapped.vehicle.speed
-            # check if action_idx corresponds to a lane change
-            if sim.physical_actions[action_idx][1] != 0:
-                lane_changes += 1
-            if done and info.get("crashed", False):
-                crashes += 1
-
-            state_idx = next_state_idx
-            step_count += 1
-
-        speed /= (step_count) if step_count > 0 else 1.0
-        avg_speed[episodes] = speed
-        lane_changes_all[episodes] = lane_changes
-        episodes += 1
-        sim.close()
-
+            # Avanzar X relativo al punto de partida original
+            normalized_x = historical_data['x'] - expert_start_x
+            # Calcular Y con nuestra nueva función de carriles
+            normalized_y = normalize_y(historical_data['y'])
+            
+            ghost_car.position = np.array([normalized_x, normalized_y])
+            ghost_car.speed = historical_data['computed_v']
+            
+        #sim.render()
+        time.sleep(0.1) 
+        
+        state_idx = next_state_idx
+        step_count += 1
+            
+    sim.close()
     print("Simulation Complete")
-    final_avg_speed = sum(avg_speed) / episodes if episodes > 0 else 0.0
-    final_lane_changes = sum(lane_changes_all)
-    for i in range(episodes):
-        print(f"Episode {i+1}: Average Speed = {avg_speed[i]:.2f} m/s")
-    print(f"Average Speed: {final_avg_speed:.2f} m/s")
-    print(f"Lane Changes: {lane_changes_all[:episodes]}")
-    print(f"Total Lane Changes: {final_lane_changes}")
-    print(f"Crashes: {crashes}")
-    # save avg_speed array and crashed count to a csv file for later analysis
-    results_df = pd.DataFrame({
-        "Episode": list(range(1, episodes + 1)),
-        "Average_Speed": avg_speed[:episodes],
-        "Lane_Changes": lane_changes_all[:episodes],
-        "Crashes": [crashes] * episodes
-    })
-
-    results_df.to_csv("results/simulation_results_control.csv", index=False) # change for agg or cons
 
 
     
