@@ -10,7 +10,7 @@ Instructions for Simulator.py
 1. Run class, "main" is included
 2. New screen will pop-up with blue vehicle and a road
 3. Keyboard actions:
-    a. SPACE - resume/pause
-    b. 'n' - advance one step
-    c. 'p' - capture probe (frame) to see actions at one timestep
-    d. 'q' - quit simulation
+    SPACE - resume/pause,
+    'n' - advance one step,
+    'p' - capture probe (frame) to see actions at one timestep,
+    'q' - quit simulation.
