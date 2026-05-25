@@ -84,12 +84,12 @@ A new simulation window will open displaying:
 
 ## Simulator Controls
 
-| Key | Action |
-|||
-| `SPACE` | Pause / Resume simulation |
-| `n` | Advance one timestep |
-| `p` | Capture probe/frame for inspection |
-| `q` | Quit simulation |
+| Key   | Action                             |
+|-------|------------------------------------|
+| SPACE | Pause / Resume simulation          |
+| n     | Advance one timestep               |
+| p     | Capture probe/frame for inspection |
+| q     | Quit simulation                    |
 
 
 
