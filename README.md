@@ -1,4 +1,4 @@
-# TFG — Driving Simulation using Maximum Entropy Inverse Reinforcement Learning
+# TFG - Driving Simulation using Maximum Entropy Inverse Reinforcement Learning
 
 Driving simulation and behavior modeling project based on **Maximum Entropy Inverse Reinforcement Learning (MaxEnt IRL)** and imitation learning techniques.
 
