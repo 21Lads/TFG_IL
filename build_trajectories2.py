@@ -72,7 +72,7 @@ class BuildTrajectories:
         # .sum() adds up all lateral movement over the vehicle's lifetime.
         lat_movement = self.df.groupby("Vehicle_ID")["y"].apply(lambda g: g.diff().abs().sum())
         
-        # Filter out vehicles with too few frames (e.g., ghost vehicles or bad data)
+        # Filter out vehicles with too few frames (e.g: ghost vehicles or bad data)
         # We still want vehicles that existed long enough to demonstrate a full trajectory
         vehicle_counts = self.df["Vehicle_ID"].value_counts()
         valid_min_frames = 600 # Adjust this based on your dt (e.g., 40 frames = 20 seconds at dt=0.5)
@@ -130,7 +130,7 @@ class BuildTrajectories:
         return selected_aggressive, selected_conservative
     
     def build_trajectories(self, selected_ids):
-        # 1. Extract data for selected vehicles
+        # Extract data for selected vehicles
         selected_df = self.df[self.df["Vehicle_ID"].isin(selected_ids)].copy()
         window = 100   # frames per trajectory
         step = 50      # overlap between trajectories
@@ -184,7 +184,7 @@ class BuildTrajectories:
     
     def to_numeric(self, df):
         """Convert specified columns to numeric, coercing errors to NaN"""
-        # 8. Make trajectories_df all numeric
+        # Make trajectories_df all numeric
 
         # Convert all numeric columns
         df[self.columns] = df[self.columns].apply(pd.to_numeric, errors='coerce')
@@ -230,94 +230,3 @@ class BuildTrajectories:
 #Sort trajectories_df by traj_id and Time(s)
 #print(trajectories_df.iloc[310:360])
 #print(trajectories_df.dtypes)
-
-
-
-# 9. Metadata
-
-#metadata = []
-#
-#for traj_id, group in trajectories_df.groupby("traj_id"):
-#    vid = group["Vehicle_ID"].iloc[0]
-#
-#    # Duration and displacement
-#    duration = group["Time(s)"].max() - group["Time(s)"].min()
-#    total_displacement = np.nansum(group["distance"])
-#
-#    # Lane (y)
-#    y_pos = group["y"].mean()
-#    lane = int((y_pos % 10) // 2 + 1) if y_pos != 6 else 3 # lane width of 2 meters
-#
-#    # Velocity stats
-#    v_mean = group["v"].mean()
-#
-#    # Longitudinal and lateral acceleration
-#    acc_long_mean = group["longitudinal_acceleration"].mean()
-#    acc_lat_mean = group["lateral_acceleration"].mean()
-#
-#    # Longitudinal jerk (smoothness)
-#    jerk_long_mean = group["longitudinal_jerk"].mean()
-#
-#    # Headways (risk-related)
-#    space_headway_mean = group["space_headway"].mean()
-#    time_headway_mean = group["time_headway"].mean()
-#
-#    # Heading change
-#    heading_change = group["heading"].iloc[-1] - group["heading"].iloc[0]
-#
-#    # Derived metrics
-#    #efficiency_index = total_displacement / duration if duration > 0 else np.nan
-#    #comfort_index = 1 / (1 + abs(jerk_long_mean) + abs(acc_lat_mean))
-#
-#    # Save all metrics
-#    metadata.append({
-#        "traj_id": traj_id,
-#        "Vehicle_ID": vid,
-#        "entries_count": len(group),
-#        "duration_s": duration,
-#        "displacement_m": total_displacement,
-#        "lane": lane,
-#        "v_mean": v_mean,
-#        "acc_long_mean": acc_long_mean,
-#        "acc_lat_mean": acc_lat_mean,
-#        "jerk_long_mean": jerk_long_mean,
-#        "space_headway_mean": space_headway_mean,
-#        "time_headway_mean": time_headway_mean,
-#        "heading_change": heading_change,
-#        #"efficiency_index": efficiency_index,
-#        #"comfort_index": comfort_index
-#    })
-#
-## Convert to DataFrame
-#metadata_df = pd.DataFrame(metadata)
-#
-## === Save metadata to file ===
-#output_meta_path = "M40_d07_h08_trajectory_metadata_updated.csv"
-##metadata_df.to_csv(output_meta_path, index=False)
-#
-#print(f"Saved {len(metadata_df)} trajectories' metadata to {output_meta_path}\n")
-##print(metadata_df["displacement_m"].head(24))
-##print(metadata_df["v_mean"].head(24))
-##print(metadata_df["acc_long_mean"].head(24))
-##print(metadata_df["acc_lat_mean"].head(24))
-##print(metadata_df["jerk_long_mean"].head(24))
-##print(metadata_df["space_headway_mean"].head(24))
-##print(metadata_df["lane"].head(24))
-#
-#for i in range(1):#len(selected_ids)):
-#    sample_vid = selected_ids[i]
-#    sample_traj = metadata_df[metadata_df["Vehicle_ID"] == sample_vid]
-#    # Now make a graph of this sample_traj
-#    #print(sample_traj)
-#    #plt.figure(figsize=(10,6))
-#    #plt.plot(sample_traj["Time(s)"], sample_traj["x"], marker='o', linestyle='-', color='blue')
-#    #plt.show()
-#
-#    # plot graph for lane vs time for a specific vehicle
-#    plt.figure(figsize=(10,6))
-#    plt.plot(sample_traj["duration_s"], sample_traj["lane"], marker='o', linestyle='-', color='green')
-#    plt.title(f"Vehicle {sample_vid} Lane Position Over Time")
-#    plt.xlabel("Time (s)")
-#    plt.ylabel("Lane Position (y)")
-#    plt.show()
-

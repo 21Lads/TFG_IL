@@ -19,7 +19,7 @@ class DrivingEnv:
         self.lane_width = lane_width
         self.road_width = road_width
         self.lanes = int(road_width / lane_width)
-        self.dt = dt  # Time step duration (e.g., 0.5 seconds per frame)
+        self.dt = dt  # Time step duration (0.5 seconds per frame)
         
         self.current_index = 0 
         self.current_traj = None 
@@ -219,7 +219,7 @@ class DrivingEnv:
             if prob_sum > 0:
                 action_probs = action_probs / prob_sum
             else:
-                # 2. Solo en caso de un fallo catastrófico del estado (estado jamás visto)
+                # Solo en caso de un fallo catastrófico del estado (estado jamás visto)
                 action_probs = np.ones(mdp_builder.n_actions) / mdp_builder.n_actions
 
             # Sample an action based on the probabilities
@@ -299,7 +299,7 @@ class DrivingEnv:
             all_rmse_y.append(rmse_y)
 
             # 
-            # CÁLCULO DEL FEATURE EXPECTATION ERROR (FEE)
+            # CALCULO DEL FEATURE EXPECTATION ERROR (FEE)
             # 
             # Reconstruir las características del EXPERTO a partir del dataset crudo
             th = expert_df['time_headway'].fillna(0.0).iloc[:min_len].values
@@ -375,7 +375,7 @@ class DrivingEnv:
         for traj_id, expert_traj in test_trajectories:
             horizon = len(expert_traj)
             
-            # --- 1. WASSERSTEIN DISTANCE PREP ---
+            #1. WASSERSTEIN DISTANCE PREP 
             # Simulate agent to get its front_risk distribution
             sim_df = self.simulate_agent(mdp_builder, policy, traj_id, max_steps=horizon)
             
@@ -390,14 +390,14 @@ class DrivingEnv:
             all_expert_front_risk.extend(front_risk_exp)
             all_agent_front_risk.extend(sim_df['front_risk'].iloc[:min_len].values)
 
-            # --- 2. NEGATIVE LOG-LIKELIHOOD (NLL) ---
+            #2. NEGATIVE LOG-LIKELIHOOD (NLL) 
             # Reset env to track the expert's exact decisions
             self.reset(traj_id)
             for idx in range(1, len(self.current_traj)):
                 prev = self.current_traj.iloc[idx - 1]
                 curr = self.current_traj.iloc[idx]
 
-                # What did the expert physically do?
+                # What did the expert physically do
                 delta_v = curr["v"] - prev["v"]
                 delta_y = curr["y"] - prev["y"]
                 delta_lane = int(round(delta_y / self.lane_width))

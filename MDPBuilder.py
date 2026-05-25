@@ -179,7 +179,6 @@ class MDPBuilder:
             current_deceleration = np.maximum(0.0, -new_accel)
             new_interaction = np.zeros_like(interaction)
             
-            ## --- FIXED-HORIZON LANE CHANGE MODEL ---
             #N = 4  # number of steps to complete lane change (2s with dt=0.5)
             #a_max = 0.5  # peak lateral acceleration (m/s^2)
             ## Normalize current lateral accel to detect phase of lane change
@@ -195,7 +194,7 @@ class MDPBuilder:
             #)
             ## Convert profile to actual acceleration
             #target_lat_accel = phys_l * a_max * target_profile
-            ## --- CRITICAL: enforce commitment ---
+            ##  CRITICAL: enforce commitment 
             ## If already mid lane-change, ignore opposite action
             #in_progress = np.abs(lat_accel) > 0.05
             #flip_mask = (lat_accel * phys_l) < 0

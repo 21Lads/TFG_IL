@@ -27,7 +27,7 @@ class IntegratedHighwaySimulator:
         self.env.unwrapped.configure({
             "offscreen_rendering": True,
             "lanes_count": 3,
-            "vehicles_density": 1.8,
+            "vehicles_density": 0.5,
             "speed_limit": 33.3, # 120 km/h
             "duration": 60, # 20 seconds at 0.5s per step
             "policy_frequency": int(1 / self.dt),
@@ -310,8 +310,14 @@ if __name__ == "__main__":
     )
     ghost_car.color = (255, 0, 255) # Magenta
     ghost_car.crashed = False 
+
+
+
+    ## Uncomment if expert car should interact with the environment
     #sim.env.unwrapped.road.vehicles.append(ghost_car)
     
+
+
     print("\n--- Starting Ghost Car Comparison (Shadow Mode) ---")
     step_count = 0
     paused = True
