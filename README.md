@@ -42,7 +42,7 @@ pip install highway-env
 You may also need:
 
 ```bash
-pip install numpy pandas matplotlib gymnasium pygame
+pip install numpy pandas matplotlib gymnasium seaborn pickle scikit-learn
 ```
 
 
