@@ -83,7 +83,7 @@ class IRLVisualizer:
         colors = ['green' if val > 0 else 'red' for val in self.theta]
         
         sns.barplot(x=self.feature_names, y=self.theta, palette=colors)
-        plt.title("Learned Reward Weights ($\theta$)")
+        plt.title("Learned Reward Weights ($theta$)")
         plt.ylabel("Weight Value")
         plt.xticks(rotation=45)
         plt.axhline(0, color='black', linewidth=1)
@@ -320,54 +320,7 @@ class IRLVisualizer:
         plt.grid(True, linestyle="--", alpha=0.5)
         plt.legend()
         
-        #plt.suptitle("Experiment 2: Driving Styles Trajectory Comparison", fontsize=14, fontweight='bold')
         plt.tight_layout()
-        #plt.savefig("results/experiment2_style_comparison.png", dpi=300)
-        plt.show()
-
-    def plot_policy_heatmap(self, policy, expert_trajectories, top_n_states=30):
-        """
-        Versión corregida: Genera un mapa de calor de pi(a|s).
-        Muestra qué acciones prefiere el agente en los estados que el experto visitó.
-        """
-        # 1. Reconstruir etiquetas de acciones siguiendo la lógica de MDPBuilder
-        v_actions = ["-1.5", "-0.75", "0 (maintain)", "+0.75", "+1.5"]
-        l_actions = ["Left", "Center", "Right"]
-        
-        action_labels = []
-        for v in v_actions:
-            for l in l_actions:
-                action_labels.append(f"{v} | {l}")
-
-        # 2. Obtener una muestra de estados que el EXPERTO realmente visitó
-        # (Esto hace que el gráfico tenga sentido real)
-        visited_states = []
-        for _, traj in expert_trajectories[:5]: # Miramos las primeras 5 trayectorias
-            for state_idx, _ in traj:
-                if state_idx not in visited_states:
-                    visited_states.append(state_idx)
-        
-        # Limitamos para que el gráfico no sea gigante
-        sample_states = visited_states[:top_n_states]
-        subset_policy = policy[sample_states, :]
-        
-        # 3. Dibujar el Heatmap
-        plt.figure(figsize=(12, 8))
-        ax = sns.heatmap(
-            subset_policy.T, 
-            cmap="YlGnBu", 
-            xticklabels=sample_states,
-            yticklabels=action_labels,
-            cbar_kws={'label': 'Probabilidad $\pi(a|s)$'},
-            linewidths=.5
-        )
-        
-        plt.title("Política Aprendida: Probabilidad de Acción por Estado", fontsize=14, pad=20)
-        plt.xlabel("ID del Estado (Visitados por el Experto)", fontsize=12)
-        plt.ylabel("Espacio de Acciones Discreto", fontsize=12)
-        
-        plt.tight_layout()
-        plt.savefig("results/policy_heatmap_fixed.png", dpi=300)
         plt.show()
 
     
@@ -386,13 +339,11 @@ class IRLVisualizer:
 
         if experiment2 == False:
 
-            print("Visualizing Action Distributions...")
-            self.plot_action_distribution(test_trajectories)
-
             print("Visualizing Feature Expectation Matching...")
             self.plot_feature_expectations_matching(expert_df, simulated_df)
 
 def import_data_for_styles():
+    import pickle
     """
     Carga los DataFrames de las trayectorias simuladas para ambos estilos
     y los devuelve para su uso en la función de comparación de estilos.
